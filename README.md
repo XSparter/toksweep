@@ -148,7 +148,8 @@ Short version: it uses your profile the way you would, just faster.
    only view where the *Delete* option shows up reliably. Opening a video URL directly
    gives you a different page with no delete button.
 3. Moves down with the player's *next* arrow, checks each post against your rules, and when
-   one has to go: `...` menu → *Delete* → confirm.
+   one has to go: `...` menu → *Delete* → confirm. Then it waits for TikTok's answer to the
+   delete request and only counts it if TikTok says it worked.
 4. Before every delete it double-checks that the player is showing the exact post it just
    judged, on your own account. If anything looks off, it skips.
 
@@ -160,6 +161,8 @@ More detail in [docs/how-it-works.md](docs/how-it-works.md).
 ## Heads up
 
 - **Deleting is permanent.** TikTok has no trash bin. Use the dry run.
+- **Promoted posts can't be deleted** while the promotion is running. TikTok refuses with
+  *"this action is disabled during advertising"*; toksweep reports it and moves on.
 - This automates your own account through the regular website. It's still automation:
   use reasonable delays and don't run it 24/7. You're responsible for how you use it.
 - TikTok changes its web UI now and then. If a run starts failing, check `debug/` and

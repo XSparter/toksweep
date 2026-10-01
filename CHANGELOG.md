@@ -8,6 +8,8 @@ First public version.
 - Rules: views / likes / comments / shares / engagement thresholds, `OR` / `AND`, date ranges,
   protection for recent posts
 - Deletes through cinema mode, one post at a time, with an identity check before each delete
+- A delete only counts once TikTok's own response confirms it (catches promoted posts and
+  silent server-side failures)
 - Supports photo carousels
 - Recovers when the player stops advancing
 - Dry run by default, per-run cap, delay between deletes

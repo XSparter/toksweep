@@ -32,6 +32,7 @@ DEBUG_DIR = Path("debug")
 DELETED_LOG = Path("deleted.csv")
 
 ITEM_LIST_API = "/api/post/item_list/"
+DELETE_API = "/api/aweme/delete/"
 
 # TikTok's own test ids. Way more stable than class names, and they don't change with the UI language.
 SEL_GRID_ITEM = '[data-e2e="user-post-item"]'
@@ -296,7 +297,19 @@ class Sweeper:
         except Exception:
             await self.page.keyboard.press("Escape")
             return False
-        await btn.click()
+
+        # Clicking isn't proof. Every now and then TikTok accepts the click, moves on to the
+        # next post, and quietly fails on the server. So we wait for its own answer.
+        try:
+            async with self.page.expect_response(
+                    lambda r: DELETE_API in r.url and r.request.method == "POST", timeout=15000) as info:
+                await btn.click()
+            data = await (await info.value).json()
+        except Exception:
+            return False
+        if data.get("status_code") != 0:
+            print(f"      tiktok said no: {data.get('status_msg') or data.get('status_code')}", flush=True)
+            return False
         return True
 
     async def delete_current(self) -> bool:
