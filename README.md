@@ -63,6 +63,11 @@ one by one.
 > toksweep waits a few seconds before it starts and between one step and the next. That's what
 > keeps TikTok from flagging and blocking the account. **Let it work and don't touch the browser.**
 >
+> **Chromium takes a while to get going, too.** After you press Start the browser opens, and once
+> the TikTok page is up it can look frozen, even for a minute or more. It isn't: it's checking the
+> login, scrolling your profile and reading the stats. The app tells you this when you press Start,
+> and the status line at the top follows along (*starting the browser → reading post stats → running*).
+>
 > **Trust only what the app window and the log say.** The browser may look stuck, or keep showing
 > videos that are already gone: TikTok's page lags behind. A post is deleted when the log says
 > `deleted`, and it's listed in `deleted.csv`.
@@ -104,7 +109,9 @@ python gui.py other.json       # or any other config file
 - **Username** can be written as `name`, `@name` or pasted as a profile link
   (`https://www.tiktok.com/@name`): it's cleaned up automatically.
 - **Start** saves the form to the config file and runs. With dry run off it asks for
-  confirmation first. **Stop** finishes the current step and quits cleanly.
+  confirmation first. Then a short notice explains that the browser takes a while and may look
+  frozen (tick *Don't show this again* once you know). **Stop** finishes the current step and quits cleanly.
+- **Status** at the top follows the run: starting the browser, reading post stats, running.
 - `toksweep.exe --selftest` (or `python gui.py --selftest`) checks dependencies, the date
   picker and the browser, and writes the result to `selftest.txt`. Attach it to bug reports.
 

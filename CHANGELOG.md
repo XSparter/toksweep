@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1 - 2026-10-01
+
+- When you press Start, a notice explains that Chromium takes a while to start and that the
+  TikTok page can look frozen for a minute or more while it works (with *Don't show this again*)
+- The status line follows the run: starting the browser → reading post stats → running
+- The command-line log says the same when Chromium starts
+
 ## 1.2.0 - 2026-10-01
 
 - **Standalone exe**: Chromium now ships inside `toksweep.exe` and is unpacked on first launch.

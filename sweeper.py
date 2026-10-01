@@ -93,6 +93,8 @@ class Sweeper:
         # persistent profile = you log in once and TikTok remembers you
         profile = Path(self.opts.get("browser_profile_dir", "browser_profile")).resolve()
         profile.mkdir(parents=True, exist_ok=True)
+        print("Starting Chromium... once the page opens it can look frozen for a while.\n"
+              "It isn't: it's checking the login and loading your profile. Let it work.\n", flush=True)
         self._pw = await async_playwright().start()
         self._ctx = await self._pw.chromium.launch_persistent_context(
             str(profile),

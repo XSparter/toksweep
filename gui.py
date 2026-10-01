@@ -24,7 +24,7 @@ from datetime import date
 
 import deps
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 FROZEN = getattr(sys, "frozen", False)
 # da exe: i file utente (config, profilo, deleted.csv) stanno accanto all'exe
@@ -83,6 +83,19 @@ STRINGS = {
         "profile": "Profilo browser:", "start": "▶ Avvia", "stop": "■ Stop",
         "status": "Stato:", "st_idle": "inattivo", "st_running": "in esecuzione…", "st_stopping": "arresto…",
         "st_deps": "controllo dipendenze…", "st_deps_fail": "dipendenze mancanti",
+        "st_browser": "avvio del browser… (può sembrare fermo: è normale)",
+        "st_loading": "leggo le statistiche dei post… (può volerci qualche minuto)",
+        "start_notice_title": "Sta partendo",
+        "start_notice": "Ora si apre Chromium, il browser che toksweep comanda.\n\n"
+                        "All'inizio ci mette un po'. Dopo che la pagina di TikTok si è aperta può sembrare "
+                        "tutto fermo, anche per un minuto o più: NON è bloccato. Sta controllando il login, "
+                        "scorrendo il profilo e leggendo le statistiche, con pause volute per non farsi "
+                        "bloccare da TikTok.\n\n"
+                        "Non chiudere il browser e non cliccarci dentro. L'avanzamento lo vedi nel log di "
+                        "questa finestra: fidati di quello, non della pagina.",
+        "dont_show": "Non mostrare più",
+        "browser_starting": "Avvio di Chromium: la pagina può sembrare ferma per un po' dopo che si apre. "
+                            "Non è bloccato, lascialo lavorare.",
         "clear_log": "Pulisci log", "save_log": "Salva log…",
         "hint": "Per fermare premi Stop. Il browser deve restare aperto durante il run.",
         "slow_notice": "⏳ È lento di proposito: aspetta qualche secondo prima di partire e tra un passo e "
@@ -119,6 +132,18 @@ STRINGS = {
         "profile": "Browser profile:", "start": "▶ Start", "stop": "■ Stop",
         "status": "Status:", "st_idle": "idle", "st_running": "running…", "st_stopping": "stopping…",
         "st_deps": "checking dependencies…", "st_deps_fail": "missing dependencies",
+        "st_browser": "starting the browser… (may look stuck: that's normal)",
+        "st_loading": "reading post stats… (can take a few minutes)",
+        "start_notice_title": "Starting up",
+        "start_notice": "Chromium, the browser toksweep drives, is about to open.\n\n"
+                        "It takes a while to get going. Once the TikTok page is open it may look frozen, "
+                        "even for a minute or more: it is NOT stuck. It's checking the login, scrolling "
+                        "the profile and reading the stats, with deliberate pauses so TikTok doesn't block it.\n\n"
+                        "Don't close the browser and don't click inside it. Follow the progress in this "
+                        "window's log: trust that, not the page.",
+        "dont_show": "Don't show this again",
+        "browser_starting": "Starting Chromium: the page may look frozen for a while after it opens. "
+                            "It isn't stuck, let it work.",
         "clear_log": "Clear log", "save_log": "Save log…",
         "hint": "Press Stop to halt. Keep the browser open while it runs.",
         "slow_notice": "⏳ It's slow on purpose: it waits a few seconds before starting and between steps, so "
@@ -854,7 +879,19 @@ class ToksweepGUI(tk.Tk):
                 self.txt_log.delete("end-1c linestart", "end-1c")
             self._cr_pending = False
             self.txt_log.insert("end", chunk)
+            if self.running:
+                self._status_from_log(chunk)
         self.txt_log.see("end")
+
+    # fasi del run riconosciute dal log dello sweeper -> stato in alto, così si vede che lavora
+    PHASES = [("Loading https://www.tiktok.com/@", "st_loading"), ("posts match the rules", "st_running")]
+
+    def _status_from_log(self, chunk: str):
+        if self.status_key == "st_stopping":
+            return
+        for marker, key in self.PHASES:
+            if marker in chunk:
+                self._set_status(key)
 
     def _drain_log(self):
         try:
@@ -898,6 +935,41 @@ class ToksweepGUI(tk.Tk):
         self._refresh_buttons()
 
     # ---------- run ----------
+    def _start_notice(self):
+        """Avviso a ogni Avvia (finché l'utente non lo spegne): il browser sembra fermo ma lavora."""
+        p, t = self.pal, self.t
+        win = tk.Toplevel(self)
+        win.title(t("start_notice_title"))
+        win.resizable(False, False)
+        win.configure(bg=p["bg"])
+        win.transient(self)
+        frm = ttk.Frame(win, padding=18)
+        frm.pack()
+        row = ttk.Frame(frm)
+        row.pack(fill="x")
+        if self._logo:
+            ttk.Label(row, image=self._logo).pack(side="left", anchor="n", padx=(0, 12))
+        ttk.Label(row, text=t("start_notice"), wraplength=420, justify="left").pack(side="left")
+        hide = tk.BooleanVar(value=False)
+        bottom = ttk.Frame(frm)
+        bottom.pack(fill="x", pady=(16, 0))
+        ttk.Checkbutton(bottom, text=t("dont_show"), variable=hide).pack(side="left")
+        ok = ttk.Button(bottom, text=t("ok"), style="Accent.TButton", command=win.destroy)
+        ok.pack(side="right")
+        win.bind("<Return>", lambda _e: win.destroy())
+        win.bind("<Escape>", lambda _e: win.destroy())
+        dark_title_bar(win, self.theme == "dark")
+        win.update_idletasks()
+        x = self.winfo_rootx() + (self.winfo_width() - win.winfo_reqwidth()) // 2
+        y = self.winfo_rooty() + (self.winfo_height() - win.winfo_reqheight()) // 3
+        win.geometry(f"+{x}+{y}")
+        win.grab_set()
+        ok.focus_set()
+        self.wait_window(win)
+        if hide.get():
+            self.settings["hide_start_notice"] = True
+            save_settings(self.settings)
+
     def start_run(self):
         if self.running or not self.deps_ready:
             return
@@ -912,13 +984,15 @@ class ToksweepGUI(tk.Tk):
         except Exception as e:
             messagebox.showerror(self.t("save_failed"), str(e))
             return
+        if not self.settings.get("hide_start_notice"):
+            self._start_notice()
 
         STOP_FILE.unlink(missing_ok=True)
         self.running = True
         self._refresh_buttons()
-        self._set_status("st_running")
+        self._set_status("st_browser")
         self.log(f"\n{'=' * 60}\n[gui] {self.t('start_msg', user=cfg['account']['username'], dry=cfg['options']['dry_run'])}"
-                 f"\n{'=' * 60}\n{self.t('slow_notice')}\n\n")
+                 f"\n{'=' * 60}\n{self.t('slow_notice')}\n\n[gui] {self.t('browser_starting')}\n\n")
         finished, error = self.t("finished"), self.t("error").upper()
 
         def runner():
