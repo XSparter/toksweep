@@ -1,0 +1,17 @@
+# your stuff, never commit it
+config.json
+browser_profile/
+deleted.csv
+debug/
+STOP
+log.txt
+*.log
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+build/
+dist/
+*.spec

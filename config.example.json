@@ -1,0 +1,28 @@
+{
+  "account": {
+    "username": "your_tiktok_username"
+  },
+  "rules": {
+    "date_ranges": [
+      { "from": "2026-04-01", "to": "2026-07-31" },
+      { "from": "2026-08-08", "to": "2026-12-31" }
+    ],
+    "min_age_days": 7,
+    "delete_if": {
+      "views_below": 4000,
+      "likes_below": null,
+      "comments_below": null,
+      "shares_below": null,
+      "engagement_rate_below": null
+    },
+    "logic": "OR"
+  },
+  "options": {
+    "dry_run": true,
+    "max_deletes_per_run": 50,
+    "delay_between_deletes_seconds": 3,
+    "headless": false,
+    "locale": "en-US",
+    "browser_profile_dir": "browser_profile"
+  }
+}

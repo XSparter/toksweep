@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <g id="broom">
+      <!-- handle -->
+      <path d="M172 44 L118 132" stroke-width="14" stroke-linecap="round" fill="none"/>
+      <!-- binding -->
+      <path d="M100 124 L136 146" stroke-width="16" stroke-linecap="round" fill="none"/>
+      <!-- bristles -->
+      <path d="M98 132 L136 155 L112 206 Q90 214 62 196 Z" stroke-width="0"/>
+      <path d="M84 176 L118 196 M96 158 L126 176" stroke-width="5" stroke-linecap="round" fill="none"/>
+    </g>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#121214"/>
+  <!-- dust swept away -->
+  <circle cx="176" cy="196" r="9" fill="#25F4EE" opacity=".9"/>
+  <circle cx="202" cy="178" r="6" fill="#FE2C55" opacity=".9"/>
+  <circle cx="198" cy="208" r="4.5" fill="#ffffff" opacity=".7"/>
+  <!-- the usual tiktok double-shadow trick -->
+  <use href="#broom" transform="translate(-5,-3)" stroke="#25F4EE" fill="#25F4EE"/>
+  <use href="#broom" transform="translate(5,3)" stroke="#FE2C55" fill="#FE2C55"/>
+  <use href="#broom" stroke="#ffffff" fill="#ffffff"/>
+  <!-- bristle lines in bg colour so they read on the white -->
+  <path d="M84 176 L118 196 M96 158 L126 176" stroke="#121214" stroke-width="5" stroke-linecap="round" fill="none"/>
+</svg>
