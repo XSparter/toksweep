@@ -25,6 +25,10 @@ toksweep does that clicking for you. It reads the real stats of every post on yo
 decides which ones go based on your rules, and deletes them through the normal TikTok web UI,
 one by one.
 
+<p align="center">
+  <img src="assets/screenshot-dark.png" width="820" alt="toksweep desktop app">
+</p>
+
 ## What it does
 
 - Reads views, likes, comments, shares and post date for every post on your profile
@@ -39,8 +43,23 @@ one by one.
 - **Dry run by default**: shows what it would delete and touches nothing
 - Writes every deletion to `deleted.csv`, so you know exactly what's gone
 - Emergency stop at any moment
+- Checks you're logged in **as the account in the config** before touching anything
+- Desktop app in English and Italian, light and dark theme, date picker. Or plain command line
 
-## Requirements
+## Quick start (Windows app)
+
+1. Download `toksweep.exe` from the [latest release](https://github.com/XSparter/toksweep/releases/latest).
+2. Put it in a folder of its own (it keeps its config, browser session and `deleted.csv` next to itself)
+   and double-click it.
+3. The first launch downloads the Chromium browser it drives (~150 MB, once).
+4. Type your username, set your rules, leave **Dry run** ticked and press **Start**.
+   A browser window opens: log into TikTok there the first time.
+5. Read the preview in the log. When you're happy with it, untick Dry run and run again.
+
+Windows SmartScreen may warn you because the exe isn't signed. Click *More info → Run anyway*,
+or build it yourself from source (see [Building the exe](#building-the-exe)).
+
+## Requirements (from source)
 
 - Python 3.10 or newer
 - Windows, macOS or Linux (the `q` stop key is Windows only; the `STOP` file works everywhere)
@@ -55,9 +74,33 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
+The desktop app does the last two steps by itself: on startup it checks for missing Python
+packages and for the Chromium browser, and installs whatever is missing. You can also run
+the check alone with `python deps.py`.
+
+## The desktop app
+
+```bash
+python gui.py                  # uses config.json
+python gui.py other.json       # or any other config file
+```
+
+- **Language**: English or Italian, picked from your Windows language; switch it from the
+  menu in the top right. The choice is remembered in `gui_settings.json`.
+- **Colors** follow the Windows light/dark setting, live, even while the app is open.
+- **Date ranges** are picked from a calendar. Double-click a range to edit it.
+- **Username** can be written as `name`, `@name` or pasted as a profile link
+  (`https://www.tiktok.com/@name`): it's cleaned up automatically.
+- **Start** saves the form to the config file and runs. With dry run off it asks for
+  confirmation first. **Stop** finishes the current step and quits cleanly.
+- `toksweep.exe --selftest` (or `python gui.py --selftest`) checks dependencies, the date
+  picker and the browser, and writes the result to `selftest.txt`. Attach it to bug reports.
+
+The app window has a fixed size on purpose, so the layout never breaks.
+
 ## Configure
 
-Copy the example config and edit it:
+The app edits the config for you. If you use the command line, copy the example config and edit it:
 
 ```bash
 cp config.example.json config.json
@@ -65,7 +108,7 @@ cp config.example.json config.json
 
 ```jsonc
 {
-  "account": { "username": "your_tiktok_username" },
+  "account": { "username": "your_tiktok_username" },   // with or without @, or the profile link
   "rules": {
     "date_ranges": [                          // only posts published inside these ranges are considered
       { "from": "2026-04-01", "to": "2026-07-31" },
@@ -94,7 +137,7 @@ cp config.example.json config.json
 
 Dates use your computer's local time, so a video posted at 1 AM counts for that day.
 
-## Run
+## Run (command line)
 
 ```bash
 python main.py                 # uses config.json
@@ -103,6 +146,18 @@ python main.py other.json      # or any other config file
 
 The first time, a Chromium window opens on TikTok: log in normally. The session is kept in
 `browser_profile/`, so you won't have to log in again next time.
+
+### Login check
+
+Before reading a single stat, toksweep asks TikTok which account the browser is logged into
+and compares it with the username in the config:
+
+- **not logged in**: it waits up to 5 minutes for you to log in from the browser window
+  (Stop works while it waits). In headless mode you can't see the browser, so it stops
+  right away and tells you to run once with headless off.
+- **logged in as someone else**: it stops without touching anything. TikTok only lets you
+  delete your own posts, and a wrong account means the rules were meant for another profile.
+- **logged in as the right account**: it prints `Logged in as @you.` and carries on.
 
 Start with `"dry_run": true`, read the list it prints, and only then switch it to `false`.
 
@@ -168,6 +223,31 @@ More detail in [docs/how-it-works.md](docs/how-it-works.md).
 - TikTok changes its web UI now and then. If a run starts failing, check `debug/` and
   open an issue with the screenshot.
 - Not affiliated with TikTok or ByteDance.
+
+## Building the exe
+
+```bash
+pip install -r requirements.txt
+python build.py
+```
+
+That produces `dist/toksweep.exe`: a single file with Python, the app, Playwright and its
+driver inside (~60 MB). Chromium isn't bundled; the exe downloads it to the standard
+Playwright cache (`%LOCALAPPDATA%\ms-playwright`) the first time it starts. Run
+`dist\toksweep.exe --selftest` to check the build.
+
+## Project layout
+
+| file | what it is |
+|------|------------|
+| `gui.py` | desktop app (tkinter): form, log, language and theme |
+| `main.py` | command-line entry point |
+| `sweeper.py` | the actual work: login check, stats, rules, navigation, deletes |
+| `deps.py` | finds and installs missing packages and the Chromium browser |
+| `build.py` | builds the Windows exe with PyInstaller |
+| `config.example.json` | example config |
+| `docs/how-it-works.md` | selectors, endpoints and the gotchas behind them |
+| `tools/request-logger.user.js` | userscript to watch TikTok's web requests |
 
 ## Extra: request logger
 

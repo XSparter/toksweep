@@ -42,6 +42,21 @@ toksweep only acts in cinema mode. It checks for `[data-e2e="cinema-more-menu-tr
 and for the URL being `/@<you>/video/...` or `/@<you>/photo/...`. If either check fails it
 reopens the grid.
 
+## Login check
+
+Before anything else toksweep asks TikTok who's logged in, from inside the page:
+
+```
+GET /passport/web/account/info/?aid=1988      (same origin, browser cookies)
+-> {"message": "success", "data": {"username": "you", ...}}   logged in
+-> {"message": "error", ...}                                   logged out
+```
+
+It's a read-only lookup, the same one the web app makes. If it fails for any reason, the
+fallback is the sidebar's *Profile* link, which points to `/@you` only when logged in.
+The username found there must match the one in the config (case-insensitive), otherwise
+the run stops before reading the grid.
+
 ## Selectors in use
 
 TikTok ships `data-e2e` attributes for its own tests. They don't depend on the UI language
@@ -54,7 +69,7 @@ and they change much less often than class names.
 | *Delete* in that menu      | `[data-e2e="more-menu-popover_delete-content"]`  |
 | *Delete* in the confirm    | `[data-e2e="video-modal-delete"]`                |
 | next post                  | `button[aria-label="Next video"]`                |
-| logged-in check            | `[data-e2e="nav-profile"]`                       |
+| logged-in check (fallback) | `[data-e2e="nav-profile"]` (its link is `/@you`) |
 
 Careful with the confirm popup: *Delete* is the first button and *Cancel* the second, so
 "click the last button" cancels. Only the test id is used, on purpose.

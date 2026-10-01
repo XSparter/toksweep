@@ -42,10 +42,19 @@ SEL_CONFIRM = '[data-e2e="video-modal-delete"]'
 SEL_NEXT = 'button[aria-label="Next video"]'
 
 
+def normalize_handle(raw: str) -> str:
+    """'@name', 'name', ' @Name ', 'tiktok.com/@name?lang=en' -> 'name'"""
+    h = (raw or "").strip()
+    if "tiktok.com/" in h:
+        h = h.split("tiktok.com/", 1)[1]
+    h = h.split("?", 1)[0].split("#", 1)[0].strip("/").split("/", 1)[0]
+    return h.strip().lstrip("@").strip()
+
+
 class Sweeper:
     def __init__(self, cfg: dict):
         self.cfg = cfg
-        self.handle = cfg["account"]["username"].lstrip("@")
+        self.handle = normalize_handle(cfg["account"]["username"])
         self.profile_url = f"https://www.tiktok.com/@{self.handle}"
         self.rules = cfg["rules"]
         self.opts = cfg["options"]
@@ -98,14 +107,56 @@ class Sweeper:
         await self._ctx.close()
         await self._pw.stop()
 
-    async def ensure_logged_in(self):
+    async def logged_in_handle(self) -> str | None:
+        """Username of the account this browser is logged into, or None if logged out."""
+        # TikTok's own account endpoint: answers "success" + username only with a valid session
+        try:
+            info = await self.page.evaluate("""async () => {
+                const r = await fetch('/passport/web/account/info/?aid=1988', {credentials: 'include'});
+                return await r.json();
+            }""")
+            if info.get("message") == "success" and (info.get("data") or {}).get("username"):
+                return normalize_handle(info["data"]["username"])
+        except Exception:
+            pass
+        # fallback: the "Profile" link in the sidebar points to /@you only when logged in
+        try:
+            href = await self.page.eval_on_selector('[data-e2e="nav-profile"]',
+                                                    "e => (e.closest('a') || e).getAttribute('href')")
+            if href and "/@" in href:
+                return normalize_handle(href)
+        except Exception:
+            pass
+        return None
+
+    async def ensure_logged_in(self) -> bool:
+        """True only if logged in *as the configured account*."""
         await self.page.goto("https://www.tiktok.com/", wait_until="networkidle")
-        if await self.page.query_selector('[data-e2e="nav-profile"]'):
-            return
-        print("\nNot logged in. Log in from the browser window, I'll wait (5 min max)...", flush=True)
-        await self.page.wait_for_selector('[data-e2e="nav-profile"]', timeout=300_000)
-        print("Logged in, let's go.\n")
-        await self.page.wait_for_timeout(2000)
+        who = await self.logged_in_handle()
+        if not who:
+            if self.opts.get("headless", False):
+                print("\nNot logged in, and headless mode hides the browser so you can't log in.\n"
+                      "Run once with headless off, log in, then turn it back on.", flush=True)
+                return False
+            print("\nNot logged in. Log in from the browser window, I'll wait (5 min max)...", flush=True)
+            for _ in range(100):
+                if await self.stopped():
+                    return False
+                await self.page.wait_for_timeout(3000)
+                who = await self.logged_in_handle()
+                if who:
+                    break
+            else:
+                print("Still not logged in after 5 minutes, giving up.", flush=True)
+                return False
+            await self.page.wait_for_timeout(2000)
+        if who.lower() != self.handle.lower():
+            print(f"\nThis browser is logged in as @{who}, but the config says @{self.handle}.\n"
+                  f"TikTok only lets you delete your own posts: fix the username or log in as @{self.handle}.",
+                  flush=True)
+            return False
+        print(f"Logged in as @{who}.\n", flush=True)
+        return True
 
     # --- stats -----------------------------------------------------------------
 
@@ -348,7 +399,8 @@ class Sweeper:
         self._watch_for_stop()
         print("To stop: press 'q' here, or create a file named STOP in this folder.\n", flush=True)
 
-        await self.ensure_logged_in()
+        if not await self.ensure_logged_in():
+            return
         await self.load_stats()
         if not self.videos or await self.stopped():
             return

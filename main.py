@@ -3,7 +3,7 @@ import json
 import sys
 from pathlib import Path
 
-from sweeper import Sweeper
+from sweeper import Sweeper, normalize_handle
 
 BANNER = r"""
   _       _
@@ -27,7 +27,7 @@ async def main():
     rules, opts = cfg["rules"], cfg["options"]
 
     print(BANNER)
-    print(f"  account   @{cfg['account']['username'].lstrip('@')}")
+    print(f"  account   @{normalize_handle(cfg['account']['username'])}")
     print(f"  dry run   {opts.get('dry_run', True)}")
     print(f"  rules     {rules.get('logic', 'OR')} {{{', '.join(f'{k}: {v}' for k, v in rules.get('delete_if', {}).items() if v is not None)}}}")
     print(f"  dates     {', '.join(r['from'] + ' -> ' + r['to'] for r in rules.get('date_ranges') or []) or 'any'}")
