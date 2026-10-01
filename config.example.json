@@ -3,10 +3,7 @@
     "username": "your_tiktok_username"
   },
   "rules": {
-    "date_ranges": [
-      { "from": "2026-04-01", "to": "2026-07-31" },
-      { "from": "2026-08-08", "to": "2026-12-31" }
-    ],
+    "date_ranges": [],
     "min_age_days": 7,
     "delete_if": {
       "views_below": 4000,

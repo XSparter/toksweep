@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0 - 2026-10-01
+
+- **Standalone exe**: Chromium now ships inside `toksweep.exe` and is unpacked on first launch.
+  No Python, no install, no download
+- Headless mode uses the same full Chromium (one browser instead of two)
+- Splash screen while the exe starts up (~5 s), so it doesn't look frozen
+- The app, the log and the README say it clearly: toksweep is slow on purpose so TikTok
+  doesn't block it; trust the app and the log, not the browser page
+- No preset dates: the date range dialog starts empty, and the example config has no ranges
+- Calendar opens from a 📅 button next to each date field
+- Dark scrollbars in dark mode
+
 ## 1.1.0 - 2026-10-01
 
 Desktop app and Windows release.

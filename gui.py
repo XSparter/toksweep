@@ -24,7 +24,7 @@ from datetime import date
 
 import deps
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 FROZEN = getattr(sys, "frozen", False)
 # da exe: i file utente (config, profilo, deleted.csv) stanno accanto all'exe
@@ -85,6 +85,10 @@ STRINGS = {
         "st_deps": "controllo dipendenze…", "st_deps_fail": "dipendenze mancanti",
         "clear_log": "Pulisci log", "save_log": "Salva log…",
         "hint": "Per fermare premi Stop. Il browser deve restare aperto durante il run.",
+        "slow_notice": "⏳ È lento di proposito: aspetta qualche secondo prima di partire e tra un passo e "
+                       "l'altro, per non farsi bloccare da TikTok. Lascialo lavorare e fidati solo di quello "
+                       "che compare qui e nel log: il browser può sembrare fermo o mostrare ancora video già eliminati.",
+        "pick_date": "Scegli una data dal calendario 📅 (o scrivila come YYYY-MM-DD).",
         "range_title": "Intervallo date", "from": "Dal:", "to": "Al:", "ok": "OK", "cancel": "Annulla",
         "bad_dates": "Date non valide", "bad_dates_fmt": "Usa il formato YYYY-MM-DD per entrambe.",
         "bad_dates_order": "'Dal' deve essere prima o uguale ad 'Al'.",
@@ -117,6 +121,10 @@ STRINGS = {
         "st_deps": "checking dependencies…", "st_deps_fail": "missing dependencies",
         "clear_log": "Clear log", "save_log": "Save log…",
         "hint": "Press Stop to halt. Keep the browser open while it runs.",
+        "slow_notice": "⏳ It's slow on purpose: it waits a few seconds before starting and between steps, so "
+                       "TikTok doesn't block it. Let it work and trust only what shows up here and in the log: "
+                       "the browser may look stuck or still show videos that are already deleted.",
+        "pick_date": "Pick a date from the calendar 📅 (or type it as YYYY-MM-DD).",
         "range_title": "Date range", "from": "From:", "to": "To:", "ok": "OK", "cancel": "Cancel",
         "bad_dates": "Invalid dates", "bad_dates_fmt": "Use the YYYY-MM-DD format for both.",
         "bad_dates_order": "'From' must be on or before 'To'.",
@@ -217,6 +225,79 @@ class QueueWriter:
         pass
 
 
+class DateField(ttk.Frame):
+    """Campo data che parte vuoto, con un pulsante che apre il calendario (tkcalendar).
+    Senza tkcalendar resta un campo di testo YYYY-MM-DD."""
+    def __init__(self, parent, app: "ToksweepGUI", initial: str = ""):
+        super().__init__(parent)
+        self.app = app
+        self.entry = ttk.Entry(self, width=14)
+        self.entry.insert(0, initial)
+        self.entry.pack(side="left")
+        self.popup = None
+        ttk.Button(self, text="📅", width=3, command=self.open_calendar).pack(side="left", padx=(4, 0))
+
+    def get(self) -> str:
+        return self.entry.get()
+
+    def open_calendar(self):
+        if self.popup is not None:
+            self.popup.destroy()
+            self.popup = None
+            return
+        try:
+            from tkcalendar import Calendar
+        except ImportError:
+            return
+        pal, app = self.app.pal, self.app
+        try:
+            d = date.fromisoformat(self.get().strip())
+        except ValueError:
+            d = date.today()  # solo per scegliere quale mese mostrare: il campo resta vuoto
+        top = tk.Toplevel(self)
+        top.withdraw()  # su Windows una finestra senza bordi ignora la posizione se è già visibile
+        top.overrideredirect(True)
+        top.configure(bg=pal["border"])
+        cal = Calendar(
+            top, selectmode="day", date_pattern="yyyy-mm-dd", firstweekday="monday",
+            locale="it_IT" if app.lang == "it" else "en_US",
+            year=d.year, month=d.month, day=d.day,
+            background=pal["accent"], foreground=pal["accent_fg"], bordercolor=pal["border"],
+            headersbackground=pal["bg"], headersforeground=pal["fg"],
+            normalbackground=pal["field"], normalforeground=pal["fg"],
+            weekendbackground=pal["field"], weekendforeground=pal["fg"],
+            othermonthbackground=pal["bg"], othermonthforeground=pal["muted"],
+            othermonthwebackground=pal["bg"], othermonthweforeground=pal["muted"],
+            selectbackground=pal["accent"], selectforeground=pal["accent_fg"],
+            tooltipbackground=pal["field"], tooltipforeground=pal["fg"],
+        )
+        if not self.get().strip():
+            cal.selection_clear()
+        cal.pack(padx=1, pady=1)
+
+        def picked(_e=None):
+            sel = cal.get_date()
+            if sel:
+                self.entry.delete(0, "end")
+                self.entry.insert(0, sel)
+            close()
+
+        def close(_e=None):
+            if self.popup is not None:
+                self.popup.destroy()
+                self.popup = None
+
+        cal.bind("<<CalendarSelected>>", picked)
+        top.bind("<Escape>", close)
+        self.update_idletasks()
+        top.geometry(f"+{self.winfo_rootx()}+{self.winfo_rooty() + self.winfo_height() + 2}")
+        top.deiconify()
+        top.attributes("-topmost", True)  # sopra al dialog, che a sua volta sta sopra la finestra
+        top.lift()
+        top.focus_set()
+        self.popup = top
+
+
 class DateRangeDialog(tk.Toplevel):
     def __init__(self, app: "ToksweepGUI", initial_from="", initial_to=""):
         super().__init__(app)
@@ -234,11 +315,12 @@ class DateRangeDialog(tk.Toplevel):
         ttk.Label(frm, text=t("to")).grid(row=1, column=0, padx=(0, 10), pady=6, sticky="w")
         self.e_from = self._date_field(frm, initial_from)
         self.e_to = self._date_field(frm, initial_to)
-        self.e_from.grid(row=0, column=1, pady=6)
-        self.e_to.grid(row=1, column=1, pady=6)
+        self.e_from.grid(row=0, column=1, pady=6, sticky="w")
+        self.e_to.grid(row=1, column=1, pady=6, sticky="w")
+        ttk.Label(frm, text=t("pick_date"), style="Muted.TLabel").grid(row=2, column=0, columnspan=2, sticky="w")
 
         btns = ttk.Frame(frm)
-        btns.grid(row=2, column=0, columnspan=2, pady=(12, 0))
+        btns.grid(row=3, column=0, columnspan=2, pady=(12, 0))
         ttk.Button(btns, text=t("ok"), style="Accent.TButton", command=self._ok).pack(side="left", padx=4)
         ttk.Button(btns, text=t("cancel"), command=self.destroy).pack(side="left", padx=4)
         self.bind("<Return>", lambda _e: self._ok())
@@ -250,32 +332,10 @@ class DateRangeDialog(tk.Toplevel):
         y = app.winfo_rooty() + (app.winfo_height() - self.winfo_reqheight()) // 3
         self.geometry(f"+{x}+{y}")
         self.grab_set()
-        self.e_from.focus_set()
+        self.e_from.entry.focus_set()
 
-    def _date_field(self, parent, initial: str):
-        """Campo data con calendario a tendina (tkcalendar); se manca, un Entry semplice."""
-        pal = self.app.pal
-        try:
-            from tkcalendar import DateEntry
-            d = date.fromisoformat(initial) if initial else date.today()
-            w = DateEntry(
-                parent, width=14, date_pattern="yyyy-mm-dd", firstweekday="monday",
-                locale="it_IT" if self.app.lang == "it" else "en_US",
-                year=d.year, month=d.month, day=d.day,
-                background=pal["accent"], foreground=pal["accent_fg"], bordercolor=pal["border"],
-                headersbackground=pal["bg"], headersforeground=pal["fg"],
-                normalbackground=pal["field"], normalforeground=pal["fg"],
-                weekendbackground=pal["field"], weekendforeground=pal["fg"],
-                othermonthbackground=pal["bg"], othermonthforeground=pal["muted"],
-                othermonthwebackground=pal["bg"], othermonthweforeground=pal["muted"],
-                selectbackground=pal["accent"], selectforeground=pal["accent_fg"],
-                tooltipbackground=pal["field"], tooltipforeground=pal["fg"],
-            )
-            return w
-        except Exception:
-            e = ttk.Entry(parent, width=16)
-            e.insert(0, initial or date.today().isoformat())
-            return e
+    def _date_field(self, parent, initial: str) -> "DateField":
+        return DateField(parent, self.app, initial)
 
     def _ok(self):
         t = self.app.t
@@ -377,6 +437,7 @@ class ToksweepGUI(tk.Tk):
         s.configure("Ok.TLabel", foreground=p["ok"], font=("Segoe UI", 9, "bold"))
         s.configure("Warn.TLabel", foreground=p["warn"], font=("Segoe UI", 9, "bold"))
         s.configure("Status.TLabel", font=("Segoe UI", 10, "bold"))
+        s.configure("Notice.TLabel", foreground=p["accent"], font=("Segoe UI", 9, "bold"))
         s.configure("Brand.TLabel", font=("Segoe UI", 14, "bold"), foreground=p["accent"])
         s.configure("TLabelframe", background=p["bg"], bordercolor=p["border"])
         s.configure("TLabelframe.Label", background=p["bg"], foreground=p["fg"], font=("Segoe UI", 9, "bold"))
@@ -400,7 +461,9 @@ class ToksweepGUI(tk.Tk):
         s.configure("Treeview.Heading", background=p["bg"], foreground=p["fg"])
         s.map("Treeview", background=[("selected", p["accent"])], foreground=[("selected", p["accent_fg"])])
         for sb in ("Vertical.TScrollbar", "Horizontal.TScrollbar"):
-            s.configure(sb, background=p["field"], troughcolor=p["bg"], arrowcolor=p["fg"])
+            s.configure(sb, background=p["hover"], troughcolor=p["field"], arrowcolor=p["fg"], gripcount=0,
+                        bordercolor=p["border"], lightcolor=p["hover"], darkcolor=p["hover"])
+            s.map(sb, background=[("pressed", p["border"]), ("active", p["border"])])
         # tendina delle combobox (widget tk classici)
         self.option_add("*TCombobox*Listbox.background", p["field"])
         self.option_add("*TCombobox*Listbox.foreground", p["fg"])
@@ -552,6 +615,8 @@ class ToksweepGUI(tk.Tk):
         xscroll.grid(row=1, column=0, sticky="ew")
         logbox.rowconfigure(0, weight=1)
         logbox.columnconfigure(0, weight=1)
+        ttk.Label(right, text=t("slow_notice"), style="Notice.TLabel", wraplength=700, justify="left").pack(
+            fill="x", pady=(0, 2))
         ttk.Label(right, text=t("hint"), style="Muted.TLabel").pack(fill="x")
 
         self._refresh_list()
@@ -720,8 +785,7 @@ class ToksweepGUI(tk.Tk):
             self.var_profile.set(d)
 
     def _add_range(self):
-        last = self.ranges[-1]["to"] if self.ranges else ""
-        d = DateRangeDialog(self, last, date.today().isoformat())
+        d = DateRangeDialog(self)  # campi vuoti: le date le sceglie l'utente
         self.wait_window(d)
         if d.result:
             self.ranges.append(d.result)
@@ -854,7 +918,7 @@ class ToksweepGUI(tk.Tk):
         self._refresh_buttons()
         self._set_status("st_running")
         self.log(f"\n{'=' * 60}\n[gui] {self.t('start_msg', user=cfg['account']['username'], dry=cfg['options']['dry_run'])}"
-                 f"\n{'=' * 60}\n")
+                 f"\n{'=' * 60}\n{self.t('slow_notice')}\n\n")
         finished, error = self.t("finished"), self.t("error").upper()
 
         def runner():
@@ -941,7 +1005,7 @@ def selftest() -> int:
         async def go():
             from playwright.async_api import async_playwright
             async with async_playwright() as pw:
-                b = await pw.chromium.launch(headless=True)
+                b = await pw.chromium.launch(headless=True, channel="chromium")
                 v = b.version
                 await b.close()
                 return f"chromium {v}"
@@ -957,9 +1021,19 @@ def selftest() -> int:
     return 0 if ok else 1
 
 
+def close_splash():
+    """Exe: chiude lo splash mostrato mentre l'exe si scompatta."""
+    try:
+        import pyi_splash
+        pyi_splash.close()
+    except ImportError:
+        pass
+
+
 def main():
     os.chdir(BASE_DIR)  # sweeper.py usa percorsi relativi (STOP, deleted.csv, debug/)
     if "--selftest" in sys.argv:
+        close_splash()
         sys.exit(selftest())
     cfg_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_CONFIG
     try:  # testo nitido su schermi con scaling
@@ -968,6 +1042,7 @@ def main():
     except Exception:
         pass
     app = ToksweepGUI(cfg_path)
+    close_splash()
     app.mainloop()
 
 

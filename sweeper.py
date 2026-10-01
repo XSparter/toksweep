@@ -97,6 +97,7 @@ class Sweeper:
         self._ctx = await self._pw.chromium.launch_persistent_context(
             str(profile),
             headless=self.opts.get("headless", False),
+            channel="chromium",  # full Chromium in headless too: one browser to ship, not two
             locale=self.opts.get("locale", "en-US"),
             viewport={"width": 1280, "height": 800},
             args=["--disable-blink-features=AutomationControlled"],
@@ -397,7 +398,9 @@ class Sweeper:
     async def run(self):
         self._loop = asyncio.get_running_loop()
         self._watch_for_stop()
-        print("To stop: press 'q' here, or create a file named STOP in this folder.\n", flush=True)
+        print("To stop: press 'q' here, or create a file named STOP in this folder.", flush=True)
+        print("It's slow on purpose (pauses between steps keep TikTok from blocking it). Let it work, and\n"
+              "trust this log, not the browser: the page may look stuck or still show deleted videos.\n", flush=True)
 
         if not await self.ensure_logged_in():
             return

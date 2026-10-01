@@ -51,10 +51,21 @@ one by one.
 1. Download `toksweep.exe` from the [latest release](https://github.com/XSparter/toksweep/releases/latest).
 2. Put it in a folder of its own (it keeps its config, browser session and `deleted.csv` next to itself)
    and double-click it.
-3. The first launch downloads the Chromium browser it drives (~150 MB, once).
-4. Type your username, set your rules, leave **Dry run** ticked and press **Start**.
-   A browser window opens: log into TikTok there the first time.
-5. Read the preview in the log. When you're happy with it, untick Dry run and run again.
+   The exe is **standalone**: Python, the app and the Chromium browser are all inside, nothing
+   to install and nothing to download. The very first launch unpacks the browser (~30 s, once).
+   Every launch takes about 5 seconds before the window appears (a splash with the logo
+   shows meanwhile): the exe is unpacking itself, it isn't stuck.
+3. Type your username, set your rules, pick your date ranges (none are preset), leave
+   **Dry run** ticked and press **Start**. A browser window opens: log into TikTok there the first time.
+4. Read the preview in the log. When you're happy with it, untick Dry run and run again.
+
+> ### ⏳ It's slow on purpose
+> toksweep waits a few seconds before it starts and between one step and the next. That's what
+> keeps TikTok from flagging and blocking the account. **Let it work and don't touch the browser.**
+>
+> **Trust only what the app window and the log say.** The browser may look stuck, or keep showing
+> videos that are already gone: TikTok's page lags behind. A post is deleted when the log says
+> `deleted`, and it's listed in `deleted.csv`.
 
 Windows SmartScreen may warn you because the exe isn't signed. Click *More info → Run anyway*,
 or build it yourself from source (see [Building the exe](#building-the-exe)).
@@ -88,7 +99,8 @@ python gui.py other.json       # or any other config file
 - **Language**: English or Italian, picked from your Windows language; switch it from the
   menu in the top right. The choice is remembered in `gui_settings.json`.
 - **Colors** follow the Windows light/dark setting, live, even while the app is open.
-- **Date ranges** are picked from a calendar. Double-click a range to edit it.
+- **Date ranges** are picked from a calendar (📅 next to each field). Nothing is preset: the
+  fields start empty and an empty list means *any date*. Double-click a range to edit it.
 - **Username** can be written as `name`, `@name` or pasted as a profile link
   (`https://www.tiktok.com/@name`): it's cleaned up automatically.
 - **Start** saves the form to the config file and runs. With dry run off it asks for
@@ -215,6 +227,8 @@ More detail in [docs/how-it-works.md](docs/how-it-works.md).
 
 ## Heads up
 
+- **It's slow on purpose, and the browser lags behind.** See [Quick start](#quick-start-windows-app):
+  trust the log, not the page.
 - **Deleting is permanent.** TikTok has no trash bin. Use the dry run.
 - **Promoted posts can't be deleted** while the promotion is running. TikTok refuses with
   *"this action is disabled during advertising"*; toksweep reports it and moves on.
@@ -231,10 +245,11 @@ pip install -r requirements.txt
 python build.py
 ```
 
-That produces `dist/toksweep.exe`: a single file with Python, the app, Playwright and its
-driver inside (~60 MB). Chromium isn't bundled; the exe downloads it to the standard
-Playwright cache (`%LOCALAPPDATA%\ms-playwright`) the first time it starts. Run
-`dist\toksweep.exe --selftest` to check the build.
+That produces `dist/toksweep.exe`, a standalone single file (~210 MB): Python, the app,
+Playwright, its driver and a zipped Chromium matching that Playwright version. On first launch
+the exe unpacks Chromium into the standard Playwright cache (`%LOCALAPPDATA%\ms-playwright`);
+if that ever fails it falls back to downloading it. Run `dist	oksweep.exe --selftest` to
+check the build.
 
 ## Project layout
 
