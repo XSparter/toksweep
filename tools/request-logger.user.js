@@ -3,7 +3,7 @@
 // @namespace    https://github.com/XSparter/toksweep
 // @version      1.0
 // @description  Logs TikTok web fetch/XHR traffic to the console, one click to copy it as JSON
-// @author       dr_gaussx
+// @author       XSparter
 // @match        https://www.tiktok.com/*
 // @grant        none
 // @run-at       document-start

@@ -285,6 +285,6 @@ If toksweep saved you an afternoon of clicking, you can buy me a coffee:
 
 ## License
 
-[MIT](LICENSE) © dr_gaussx.
+[MIT](LICENSE) © [XSparter](https://github.com/XSparter).
 You can use, change and redistribute it freely, as long as you keep the copyright notice
 and credit the original project.
